@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detector Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
+    <style>
+        .container {
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .dropdown-group {
+            margin-bottom: 20px;
+        }
+        select {
+            padding: 10px;
+            font-size: 16px;
+        }
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px; /* Add spacing between buttons */
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px; /* Increase button size */
+            font-size: 16px; /* Larger font size */
+            cursor: pointer;
+            border: 2px solid #ccc;
+            border-radius: 5px; /* Slightly rounded corners */
+            background-color: #f0f0f0;
+        }
+        button:hover {
+            background-color: #e0e0e0;
+        }
+        .reset-button {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            margin-top: 20px; /* Add spacing above the reset button */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="title">Detector Dashboard</h1>
+        <div class="dropdown-group">
+            <label for="dataSelector">Select Data Type:</label>
+            <select id="dataSelector">
+                <option value="normalized">Normalized</option>
+                <option value="raw">Raw</option>
+            </select>
+        </div>
+        <div class="button-group" id="buttonGroup"></div>
+        <button id="resetButton" class="reset-button">Reset</button>
+        <div id="plot"></div>
+    </div>
+
+    <script>
+        const datasets = {
+            normalized: {
+                json: 'normalized_gain_results.json',
+                voltage: 'normalized_voltage.json',
+                title: 'Normalized gain solved by pairwise solver (0.3 ND and no ND)'
+            },
+            raw: {
+                json: 'raw_gain_results.json',
+                voltage: 'raw_voltage_first_row.json',
+                title: 'Raw gain solved by pairwise solver (0.3 ND and no ND)'
+            }
+        };
+
+        let currentMode = 'normalized'; // Default to normalized
+        let traces = [];
+
+        function loadData() {
+            const dataset = datasets[currentMode];
+
+            Promise.all([
+                fetch(dataset.json).then(response => response.json()),
+                fetch(dataset.voltage).then(response => response.json())
+            ]).then(([gainData, voltageData]) => {
+                const columns = gainData.columns; // ['P1', 'P2', ..., 'P8']
+                const index = gainData.index; // Detector names (e.g., UV1-A, UV2-A)
+                const gainValues = gainData.data; // 2D array of gain values
+
+                traces = columns.map((col, i) => ({
+                    x: index,
+                    y: gainValues.map(row => row[i]),
+                    mode: 'lines+markers',
+                    name: col,
+                    visible: false // Default to hidden
+                }));
+
+                // Add Voltage data as a separate trace
+                const voltageTrace = {
+                    x: Object.keys(voltageData), // Detector names
+                    y: Object.values(voltageData), // Voltage values
+                    mode: 'lines+markers',
+                    name: 'Voltage',
+                    visible: false // Default to hidden
+                };
+                traces.push(voltageTrace);
+
+                // Assign distinct colors
+                const colors = [
+                    '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
+                    '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
+                ];
+                traces.forEach((trace, i) => trace.line = { color: colors[i % colors.length] });
+
+                // Update the title
+                document.getElementById('title').textContent = dataset.title;
+
+                // Plot the graph
+                Plotly.newPlot('plot', traces, {
+                    title: dataset.title,
+                    xaxis: { title: 'Detectors', tickangle: 45 },
+                    yaxis: { title: 'Values' },
+                    height: 600,
+                    showlegend: true // Always show legend
+                });
+
+                // Create buttons for P1, P2, ..., P8, and Voltage
+                const buttonGroup = document.getElementById('buttonGroup');
+                buttonGroup.innerHTML = ''; // Clear existing buttons
+
+                [...columns, 'Voltage'].forEach((label, i) => {
+                    const button = document.createElement('button');
+                    button.textContent = label;
+                    button.dataset.index = i;
+
+                    button.addEventListener('click', () => {
+                        const currentTrace = traces[i];
+                        currentTrace.visible = currentTrace.visible === true ? false : true;
+                        Plotly.update('plot', { visible: [currentTrace.visible] }, {}, [i]);
+                    });
+
+                    buttonGroup.appendChild(button);
+                });
+            }).catch(error => console.error('Error loading JSON:', error));
+        }
+
+        // Add Reset button functionality
+        document.getElementById('resetButton').addEventListener('click', () => {
+            traces.forEach(trace => trace.visible = false); // Hide all traces
+            Plotly.update('plot', { visible: traces.map(() => false) });
+        });
+
+        // Dropdown change handler
+        document.getElementById('dataSelector').addEventListener('change', event => {
+            currentMode = event.target.value;
+            loadData();
+        });
+
+        // Initial load
+        loadData();
+    </script>
+</body>
+</html>

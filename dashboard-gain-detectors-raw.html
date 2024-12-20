@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detector Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
+    <style>
+        .container {
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .button-group {
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .reset-button {
+            background-color: #f44336;
+            color: white;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Raw gain solved by pairwise solver (0.3 ND and no ND) </h1>
+        <div class="button-group" id="buttonGroup"></div>
+        <button id="resetButton" class="reset-button">Reset</button>
+        <div id="plot"></div>
+    </div>
+
+    <script>
+        // Load the JSON data
+        Promise.all([
+            fetch('raw_gain_results.json').then(response => response.json()),
+            fetch('raw_voltage_first_row.json').then(response => response.json())
+        ]).then(([gainData, voltageData]) => {
+            const columns = gainData.columns; // ['P1', 'P2', ..., 'P8']
+            const index = gainData.index; // Detector names (e.g., UV1-A, UV2-A)
+            const gainValues = gainData.data; // 2D array of gain values
+
+            const traces = columns.map((col, i) => ({
+                x: index,
+                y: gainValues.map(row => row[i]),
+                mode: 'lines+markers',
+                name: col,
+                visible: false // Default to hidden
+            }));
+
+            // Add Voltage data as a separate trace
+            const voltageTrace = {
+                x: Object.keys(voltageData), // Detector names
+                y: Object.values(voltageData), // Voltage values
+                mode: 'lines+markers',
+                name: 'Voltage',
+                visible: false // Default to hidden
+            };
+            traces.push(voltageTrace);
+
+            // Assign distinct colors
+            const colors = [
+                '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
+                '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
+            ];
+            traces.forEach((trace, i) => trace.line = { color: colors[i % colors.length] });
+
+            // Plot initial empty graph with legend always displayed
+            Plotly.newPlot('plot', traces, {
+                title: 'Raw gain the selected peaks',
+                xaxis: { title: 'Detectors', tickangle: 45 },
+                yaxis: { title: 'Normalized Values' },
+                height: 600,
+                showlegend: true // Always show legend
+            });
+
+            // Create buttons for P1, P2, ..., P8, and Voltage
+            const buttonGroup = document.getElementById('buttonGroup');
+            [...columns, 'Voltage'].forEach((label, i) => {
+                const button = document.createElement('button');
+                button.textContent = label;
+                button.dataset.index = i;
+
+                button.addEventListener('click', () => {
+                    const currentTrace = traces[i];
+                    currentTrace.visible = currentTrace.visible === true ? false : true;
+                    Plotly.update('plot', { visible: [currentTrace.visible] }, {}, [i]);
+                });
+
+                buttonGroup.appendChild(button);
+            });
+
+            // Add Reset button functionality
+            const resetButton = document.getElementById('resetButton');
+            resetButton.addEventListener('click', () => {
+                traces.forEach((trace, i) => {
+                    trace.visible = false; // Hide all traces
+                });
+                Plotly.update('plot', { visible: traces.map(() => false) });
+            });
+        }).catch(error => console.error('Error loading JSON:', error));
+    </script>
+</body>
+</html>
