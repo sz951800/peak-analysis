@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
+    <title>Peak Ratios Dashboard</title>
+    <style>
+        .container {
+            padding: 20px;
+        }
+        .chart-container {
+            width: 100%;
+            height: 500px;
+            margin-bottom: 20px;
+            overflow-x: auto; /* Enable horizontal scrolling */
+            white-space: nowrap; /* Prevent line breaks */
+        }
+        #meanPlot {
+            min-width: 1500px; /* Set a minimum width for the plots */
+        }
+        body {
+            font-family: Arial, sans-serif;
+        }
+        select {
+            margin-bottom: 20px;
+            padding: 10px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="title">Peak Ratios Dashboard</h1>
+        <label for="filterSelector">Select a Filter:</label>
+        <select id="filterSelector">
+            <option value="ratios_data_nd30_0.json">ND 0.3</option>
+            <option value="ratios_data_nd80_0.json" selected>ND 0.8</option>
+        </select>
+        <br>
+        <label for="peakSelector">Select a Peak:</label>
+        <select id="peakSelector"></select>
+        <div class="chart-container">
+            <div id="meanPlot"></div>
+        </div>
+    </div>
+
+    <script>
+        const filterTitles = {
+            "ratios_data_nd30_0.json": "mean ratios (no ND / ND 0.3)",
+            "ratios_data_nd80_0.json": "mean ratios (no ND / ND 0.8)"
+        };
+
+        let currentFilter = 'ratios_data_nd80_0.json'; // Default filter
+        let ratiosMean, groundtruthMean;
+
+        // Function to load data and populate the dropdown
+        function loadData(filter) {
+            fetch(filter)
+                .then(response => response.json())
+                .then(data => {
+                    ratiosMean = data.ratios_mean;
+                    groundtruthMean = data.groundtruth_mean;
+
+                    // Populate the dropdown with peak options
+                    const peakSelector = document.getElementById('peakSelector');
+                    peakSelector.innerHTML = ''; // Clear existing options
+                    Object.keys(ratiosMean).forEach(peak => {
+                        const option = document.createElement('option');
+                        option.value = peak;
+                        option.textContent = peak;
+                        peakSelector.appendChild(option);
+                    });
+
+                    // Plot the default peak
+                    const defaultPeak = Object.keys(ratiosMean)[0];
+                    plotPeak(defaultPeak);
+
+                    // Update plots when the dropdown changes
+                    peakSelector.addEventListener('change', event => {
+                        const selectedPeak = event.target.value;
+                        plotPeak(selectedPeak);
+                    });
+                })
+                .catch(error => console.error('Error loading JSON data:', error));
+        }
+
+        // Function to plot data for a selected peak
+        function plotPeak(peak) {
+            const detectors = Object.keys(ratiosMean[peak]);
+            const meanRatios = Object.values(ratiosMean[peak]);
+            const meanGroundtruth = detectors.map(detector => groundtruthMean[detector]);
+
+            // Plot mean ratios
+            Plotly.newPlot('meanPlot', [
+                { x: detectors, y: meanRatios, type: 'scatter', mode: 'lines+markers', name: `${peak} Mean Ratios` },
+                { x: detectors, y: meanGroundtruth, type: 'scatter', mode: 'lines+markers', name: `${peak} Groundtruth Mean` }
+            ], {
+                title: filterTitles[currentFilter],
+                xaxis: { title: 'Detectors', tickangle: 45 },
+                yaxis: { title: 'Ratio' }
+            });
+        }
+
+        // Handle filter change
+        document.getElementById('filterSelector').addEventListener('change', event => {
+            currentFilter = event.target.value;
+            loadData(currentFilter);
+        });
+
+        // Initial load
+        loadData(currentFilter);
+    </script>
+</body>
+</html>
