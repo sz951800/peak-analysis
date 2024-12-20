@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
+    <title>Peak Ratios Dashboard</title>
+    <style>
+        .container {
+            padding: 20px;
+        }
+        .chart-container {
+            width: 100%;
+            height: 500px;
+            margin-bottom: 20px;
+            overflow-x: auto; /* Enable horizontal scrolling */
+            white-space: nowrap; /* Prevent line breaks */
+        }
+        #meanPlot, #variancePlot {
+            min-width: 1500px; /* Set a minimum width for the plots */
+        }
+        body {
+            font-family: Arial, sans-serif;
+        }
+        select {
+            margin-bottom: 20px;
+            padding: 10px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Mean for ND0.8</h1>
+        <label for="peakSelector">Select a Peak:</label>
+        <select id="peakSelector"></select>
+        <div class="chart-container">
+            <div id="meanPlot"></div>
+        </div>
+        <div class="chart-container">
+            <div id="variancePlot"></div>
+        </div>
+    </div>
+
+    <script>
+        // Load the JSON data
+        fetch('ratios_data_nd80_0.json')
+            .then(response => response.json())
+            .then(data => {
+                const ratiosMean = data.ratios_mean;
+                const ratiosVar = data.ratios_var;
+                const groundtruthMean = data.groundtruth_mean;
+                const groundtruthVar = data.groundtruth_var;
+
+                // Populate the dropdown with peak options
+                const peakSelector = document.getElementById('peakSelector');
+                Object.keys(ratiosMean).forEach(peak => {
+                    const option = document.createElement('option');
+                    option.value = peak;
+                    option.textContent = peak;
+                    peakSelector.appendChild(option);
+                });
+
+                // Function to plot data for a selected peak
+                function plotPeak(peak) {
+                    const detectors = Object.keys(ratiosMean[peak]);
+                    const meanRatios = Object.values(ratiosMean[peak]);
+                    const meanGroundtruth = detectors.map(detector => groundtruthMean[detector]);
+
+                    const varRatios = Object.values(ratiosVar[peak]);
+                    const varGroundtruth = detectors.map(detector => groundtruthVar[detector]);
+
+                    // Plot mean ratios
+                    Plotly.newPlot('meanPlot', [
+                        { x: detectors, y: meanRatios, type: 'scatter', mode: 'lines+markers', name: `${peak} Mean Ratios` },
+                        { x: detectors, y: meanGroundtruth, type: 'scatter', mode: 'lines+markers', name: `${peak} Groundtruth Mean` }
+                    ], {
+                        title: `${peak} Mean Ratios`,
+                        xaxis: { title: 'Detectors', tickangle: 45 },
+                        yaxis: { title: 'Ratio' }
+                    });
+
+                    // Plot variance ratios
+                    Plotly.newPlot('variancePlot', [
+                        { x: detectors, y: varRatios, type: 'scatter', mode: 'lines+markers', name: `${peak} Variance Ratios` },
+                        { x: detectors, y: varGroundtruth, type: 'scatter', mode: 'lines+markers', name: `${peak} Groundtruth Variance` }
+                    ], {
+                        title: `${peak} Variance Ratios`,
+                        xaxis: { title: 'Detectors', tickangle: 45 },
+                        yaxis: { title: 'Ratio' }
+                    });
+                }
+
+                // Default to the first peak
+                const defaultPeak = Object.keys(ratiosMean)[0];
+                plotPeak(defaultPeak);
+
+                // Update plots when the dropdown changes
+                peakSelector.addEventListener('change', event => {
+                    const selectedPeak = event.target.value;
+                    plotPeak(selectedPeak);
+                });
+            })
+            .catch(error => console.error('Error loading JSON data:', error));
+    </script>
+</body>
+</html>
