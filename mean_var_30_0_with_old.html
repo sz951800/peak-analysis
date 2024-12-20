@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
+    <title>Peak Ratios Dashboard</title>
+    <style>
+        .container {
+            padding: 20px;
+        }
+        .chart-container {
+            width: 100%;
+            height: 500px;
+            margin-bottom: 20px;
+            overflow-x: auto; /* Enable horizontal scrolling */
+            white-space: nowrap; /* Prevent line breaks */
+        }
+        #meanPlot30, #meanPlotHighLow, #variancePlot30, #variancePlotHighLow {
+            min-width: 1500px; /* Set a minimum width for the plots */
+        }
+        body {
+            font-family: Arial, sans-serif;
+        }
+        select {
+            margin-bottom: 20px;
+            padding: 10px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Peak Analysis Dashboard</h1>
+        <label for="peakSelector">Select a Peak:</label>
+        <select id="peakSelector"></select>
+        <div class="chart-container">
+            <div id="meanPlot30"></div>
+        </div>
+        <div class="chart-container">
+            <div id="meanPlotHighLow"></div>
+        </div>
+        <div class="chart-container">
+            <div id="variancePlot30"></div>
+        </div>
+        <div class="chart-container">
+            <div id="variancePlotHighLow"></div>
+        </div>
+    </div>
+
+    <script>
+        // Load the JSON data
+        Promise.all([
+            fetch('ratios_data_30_0_gain.json').then(response => response.json()),
+            fetch('ratios_data_high_low_gain.json').then(response => response.json())
+        ])
+        .then(([data30Gain, dataHighLowGain]) => {
+            const ratiosMean30 = data30Gain.ratios_mean;
+            const ratiosVar30 = data30Gain.ratios_var;
+            const groundtruthMean30 = data30Gain.groundtruth_mean;
+            const groundtruthVar30 = data30Gain.groundtruth_var;
+
+            const ratiosMeanHighLow = dataHighLowGain.ratios_mean;
+            const ratiosVarHighLow = dataHighLowGain.ratios_var;
+            const groundtruthMeanHighLow = dataHighLowGain.groundtruth_mean;
+            const groundtruthVarHighLow = dataHighLowGain.groundtruth_var;
+
+            // Populate the dropdown with peak options
+            const peakSelector = document.getElementById('peakSelector');
+            Object.keys(ratiosMean30).forEach(peak => {
+                const option = document.createElement('option');
+                option.value = peak;
+                option.textContent = peak;
+                peakSelector.appendChild(option);
+            });
+
+            // Function to plot data for a selected peak
+            function plotPeak(peak) {
+                const detectors = Object.keys(ratiosMean30[peak]);
+                
+                // Data for the 30 gain JSON
+                const meanRatios30 = Object.values(ratiosMean30[peak]);
+                const meanGroundtruth30 = detectors.map(detector => groundtruthMean30[detector]);
+                const varRatios30 = Object.values(ratiosVar30[peak]);
+                const varGroundtruth30 = detectors.map(detector => groundtruthVar30[detector]);
+
+                // Data for the high-low gain JSON
+                const meanRatiosHighLow = Object.values(ratiosMeanHighLow[peak]);
+                const meanGroundtruthHighLow = detectors.map(detector => groundtruthMeanHighLow[detector]);
+                const varRatiosHighLow = Object.values(ratiosVarHighLow[peak]);
+                const varGroundtruthHighLow = detectors.map(detector => groundtruthVarHighLow[detector]);
+
+                // Plot mean ratios for 30 gain JSON
+                Plotly.newPlot('meanPlot30', [
+                    { x: detectors, y: meanRatios30, type: 'scatter', mode: 'lines+markers', name: `${peak} Mean Ratios (30 Gain)` },
+                    { x: detectors, y: meanGroundtruth30, type: 'scatter', mode: 'lines', name: 'Ground Truth (30 Gain)' }
+                ], {
+                    title: `${peak} Mean Ratios (30 Gain)`,
+                    xaxis: { title: 'Detectors', tickangle: 45 },
+                    yaxis: { title: 'Ratio' }
+                });
+
+                // Plot mean ratios for high-low gain JSON
+                Plotly.newPlot('meanPlotHighLow', [
+                    { x: detectors, y: meanRatiosHighLow, type: 'scatter', mode: 'lines+markers', name: `${peak} Mean Ratios (High-Low Gain)` },
+                    { x: detectors, y: meanGroundtruthHighLow, type: 'scatter', mode: 'lines', name: 'Ground Truth (High-Low Gain)' }
+                ], {
+                    title: `${peak} Mean Ratios (High-Low Gain)`,
+                    xaxis: { title: 'Detectors', tickangle: 45 },
+                    yaxis: { title: 'Ratio' }
+                });
+
+                // Plot variance ratios for 30 gain JSON
+                Plotly.newPlot('variancePlot30', [
+                    { x: detectors, y: varRatios30, type: 'scatter', mode: 'lines+markers', name: `${peak} Variance Ratios (30 Gain)` },
+                    { x: detectors, y: varGroundtruth30, type: 'scatter', mode: 'lines', name: 'Ground Truth (30 Gain)' }
+                ], {
+                    title: `${peak} Variance Ratios (30 Gain)`,
+                    xaxis: { title: 'Detectors', tickangle: 45 },
+                    yaxis: { title: 'Ratio' }
+                });
+
+                // Plot variance ratios for high-low gain JSON
+                Plotly.newPlot('variancePlotHighLow', [
+                    { x: detectors, y: varRatiosHighLow, type: 'scatter', mode: 'lines+markers', name: `${peak} Variance Ratios (High-Low Gain)` },
+                    { x: detectors, y: varGroundtruthHighLow, type: 'scatter', mode: 'lines', name: 'Ground Truth (High-Low Gain)' }
+                ], {
+                    title: `${peak} Variance Ratios (High-Low Gain)`,
+                    xaxis: { title: 'Detectors', tickangle: 45 },
+                    yaxis: { title: 'Ratio' }
+                });
+            }
+
+            // Default to the first peak
+            const defaultPeak = Object.keys(ratiosMean30)[0];
+            plotPeak(defaultPeak);
+
+            // Update plots when the dropdown changes
+            peakSelector.addEventListener('change', event => {
+                const selectedPeak = event.target.value;
+                plotPeak(selectedPeak);
+            });
+        })
+        .catch(error => console.error('Error loading JSON data:', error));
+    </script>
+</body>
+</html>

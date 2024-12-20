@@ -1,0 +1,1 @@
+There is no peak 1 because no channels had 8 cleanly separated.  The closest channel to having 8 peaks was R1,  which has a split at the mid top of the dimmest peak.  But probably this ND filter blocks too many photons to be useful.

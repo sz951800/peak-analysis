@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
+    <title>Peak Analysis Dashboard</title>
+    <style>
+        .container {
+            padding: 20px;
+        }
+        .chart-container {
+            width: 100%;
+            height: 500px;
+            margin-bottom: 20px;
+            overflow-x: auto; /* Enable horizontal scrolling */
+            white-space: nowrap; /* Prevent line breaks */
+        }
+        #meanPlotFirst, #meanPlotHighLow, #variancePlotFirst, #variancePlotHighLow {
+            min-width: 1500px; /* Set a minimum width for the plots */
+        }
+        body {
+            font-family: Arial, sans-serif;
+        }
+        select {
+            margin-bottom: 20px;
+            padding: 10px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Peak Analysis Dashboard</h1>
+        <label for="dataSelector">Select Data Combination:</label>
+        <select id="dataSelector">
+            <option value="ratios_data_30_0">No Filter Full gain/No Filter minus 30% gain</option>
+            <option value="ratios_data_50_0">No Filter Full gain/No Filter minus 50% gain</option>
+            <option value="ratios_data_50_30">No Filter minus 30% gain/No Filter minus 50% gain</option>
+        </select>
+        <br>
+        <label for="peakSelector">Select a Peak:</label>
+       
+        <select id="peakSelector"></select>
+        <div class="note">(Note: P1 is the dimmest, P8 is the brightest.)</div>
+        <div class="chart-container">
+            <div id="meanPlotFirst"></div>
+        </div>
+        <div class="chart-container">
+            <div id="meanPlotHighLow"></div>
+        </div>
+        <div class="chart-container">
+            <div id="variancePlotFirst"></div>
+        </div>
+        <div class="chart-container">
+            <div id="variancePlotHighLow"></div>
+        </div>
+    </div>
+
+    <script>
+        // Load all the JSON files
+        const jsonFiles = {
+            "ratios_data_30_0": "ratios_data_30_0_gain.json",
+            "ratios_data_50_0": "ratios_data_50_0_gain.json",
+            "ratios_data_50_30": "ratios_data_50_30_gain.json",
+            "ratios_data_high_low_gain": "ratios_data_high_low_gain.json"
+        };
+
+        let firstData, highLowData;
+
+// Function to load a JSON file
+function loadJSON(file) {
+    return fetch(file).then(response => response.json());
+}
+
+// Function to plot data for a selected peak and combination
+function plotPeak(peak, firstDataLabel) {
+    const detectors = Object.keys(firstData.ratios_mean[peak]);
+
+    // Data for the first JSON
+    const meanRatiosFirst = Object.values(firstData.ratios_mean[peak]);
+    const meanGroundtruthFirst = detectors.map(detector => firstData.groundtruth_mean[detector]);
+    const varRatiosFirst = Object.values(firstData.ratios_var[peak]);
+    const varGroundtruthFirst = detectors.map(detector => firstData.groundtruth_var[detector]);
+
+    // Data for the high-low gain JSON
+    const meanRatiosHighLow = Object.values(highLowData.ratios_mean[peak]);
+    const meanGroundtruthHighLow = detectors.map(detector => highLowData.groundtruth_mean[detector]);
+    const varRatiosHighLow = Object.values(highLowData.ratios_var[peak]);
+    const varGroundtruthHighLow = detectors.map(detector => highLowData.groundtruth_var[detector]);
+
+    // Plot mean ratios for the first JSON
+    Plotly.newPlot('meanPlotFirst', [
+        { x: detectors, y: meanRatiosFirst, type: 'scatter', mode: 'lines+markers', name: `${peak} Mean Ratios` },
+        { x: detectors, y: meanGroundtruthFirst, type: 'scatter', mode: 'lines', name: 'Ground Truth' }
+    ], {
+        title: `${peak} Mean Ratios (${firstDataLabel})`,
+        xaxis: { title: 'Detectors', tickangle: 45 },
+        yaxis: { title: 'Ratio' }
+    });
+
+    // Plot mean ratios for high-low gain JSON
+    Plotly.newPlot('meanPlotHighLow', [
+        { x: detectors, y: meanRatiosHighLow, type: 'scatter', mode: 'lines+markers', name: `${peak} Mean Ratios` },
+        { x: detectors, y: meanGroundtruthHighLow, type: 'scatter', mode: 'lines', name: 'Ground Truth' }
+    ], {
+        title: `${peak} Mean Ratios (High-Low Gain in old data)`,
+        xaxis: { title: 'Detectors', tickangle: 45 },
+        yaxis: { title: 'Ratio' }
+    });
+
+    // Plot variance ratios for the first JSON
+    Plotly.newPlot('variancePlotFirst', [
+        { x: detectors, y: varRatiosFirst, type: 'scatter', mode: 'lines+markers', name: `${peak} Variance Ratios` },
+        { x: detectors, y: varGroundtruthFirst, type: 'scatter', mode: 'lines', name: 'Ground Truth' }
+    ], {
+        title: `${peak} Variance Ratios (${firstDataLabel})`,
+        xaxis: { title: 'Detectors', tickangle: 45 },
+        yaxis: { title: 'Ratio' }
+    });
+
+    // Plot variance ratios for high-low gain JSON
+    Plotly.newPlot('variancePlotHighLow', [
+        { x: detectors, y: varRatiosHighLow, type: 'scatter', mode: 'lines+markers', name: `${peak} Variance Ratios ` },
+        { x: detectors, y: varGroundtruthHighLow, type: 'scatter', mode: 'lines', name: 'Ground Truth' }
+    ], {
+        title: `${peak} Variance Ratios (High-Low Gain in old data)`,
+        xaxis: { title: 'Detectors', tickangle: 45 },
+        yaxis: { title: 'Ratio' }
+    });
+}
+
+// Load data for the selected combination
+function loadCombination(combination) {
+    const firstDataLabel = document.querySelector(`#dataSelector option[value="${combination}"]`).textContent;
+
+    Promise.all([
+        loadJSON(jsonFiles[combination]),
+        loadJSON(jsonFiles["ratios_data_high_low_gain"])
+    ]).then(([firstDataJSON, highLowDataJSON]) => {
+        firstData = firstDataJSON;
+        highLowData = highLowDataJSON;
+
+        // Populate the peak dropdown
+        const peakSelector = document.getElementById('peakSelector');
+        peakSelector.innerHTML = ''; // Clear existing options
+        Object.keys(firstData.ratios_mean).forEach(peak => {
+            const option = document.createElement('option');
+            option.value = peak;
+            option.textContent = peak;
+            peakSelector.appendChild(option);
+        });
+
+        // Default to the first peak
+        const defaultPeak = Object.keys(firstData.ratios_mean)[0];
+        plotPeak(defaultPeak, firstDataLabel);
+
+        // Update plots when the peak dropdown changes
+        peakSelector.addEventListener('change', event => {
+            const selectedPeak = event.target.value;
+            plotPeak(selectedPeak, firstDataLabel);
+        });
+    });
+}
+
+// Initialize with the default combination
+const dataSelector = document.getElementById('dataSelector');
+loadCombination(dataSelector.value);
+
+// Update combination when the data dropdown changes
+dataSelector.addEventListener('change', event => {
+    loadCombination(event.target.value);
+});
+</script>
+</body>
+</html>

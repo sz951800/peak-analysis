@@ -1,0 +1,1 @@
+note that the peaks are numbered from 1= dimmest to 8= brightest.

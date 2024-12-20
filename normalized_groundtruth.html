@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
+    <title>Normalized Peaks Dashboard</title>
+    <style>
+        .container {
+            padding: 20px;
+        }
+        .chart-container {
+            width: 100%;
+            height: 500px;
+            margin-bottom: 20px;
+        }
+        body {
+            font-family: Arial, sans-serif;
+        }
+        select {
+            margin-bottom: 20px;
+            padding: 10px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Normalized Gain for Peaks Dashboard</h1>
+        <label for="peakSelector">Select a Peak:</label>
+        <select id="peakSelector"></select>
+        <div class="chart-container">
+            <div id="plot"></div>
+        </div>
+    </div>
+
+    <script>
+        // Load the JSON data
+        fetch('normalized_results_and_groundtruth.json')
+            .then(response => response.json())
+            .then(data => {
+                const normalizedResults = data.normalized_results;
+                const normalizedGroundtruth = data.normalized_groundtruth;
+
+                // Populate the dropdown with peak options
+                const peakSelector = document.getElementById('peakSelector');
+                Object.keys(normalizedResults).forEach(peak => {
+                    const option = document.createElement('option');
+                    option.value = peak;
+                    option.textContent = peak;
+                    peakSelector.appendChild(option);
+                });
+
+                // Function to plot data for a selected peak
+                function plotPeak(peak) {
+                    const detectors = Object.keys(normalizedResults[peak]);
+                    const peakValues = Object.values(normalizedResults[peak]);
+                    const groundtruthValues = detectors.map(detector => normalizedGroundtruth[detector]);
+
+                    // Plot the data
+                    Plotly.newPlot('plot', [
+                        { x: detectors, y: peakValues, type: 'scatter', mode: 'lines+markers', name: `${peak} Normalized` },
+                        { x: detectors, y: groundtruthValues, type: 'scatter', mode: 'lines', name: 'Ground Truth' }
+                    ], {
+                        title: `${peak} Normalized Values vs Ground Truth`,
+                        xaxis: { title: 'Detectors', tickangle: 45 },
+                        yaxis: { title: 'Normalized Value' },
+                        height: 500
+                    });
+                }
+
+                // Default to the first peak
+                const defaultPeak = Object.keys(normalizedResults)[0];
+                plotPeak(defaultPeak);
+
+                // Update plot when the dropdown changes
+                peakSelector.addEventListener('change', event => {
+                    const selectedPeak = event.target.value;
+                    plotPeak(selectedPeak);
+                });
+            })
+            .catch(error => console.error('Error loading JSON data:', error));
+    </script>
+</body>
+</html>
