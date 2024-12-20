@@ -104,7 +104,7 @@ function plotPeak(peak, firstDataLabel) {
         { x: detectors, y: meanRatiosHighLow, type: 'scatter', mode: 'lines+markers', name: `${peak} Mean Ratios` },
         { x: detectors, y: meanGroundtruthHighLow, type: 'scatter', mode: 'lines', name: 'Ground Truth' }
     ], {
-        title: `${peak} Mean Ratios (High-Low Gain in old data)`,
+        title: `${peak} Mean Ratios (No ND High-Low Gain in old data)`,
         xaxis: { title: 'Detectors', tickangle: 45 },
         yaxis: { title: 'Ratio' }
     });
@@ -124,7 +124,7 @@ function plotPeak(peak, firstDataLabel) {
         { x: detectors, y: varRatiosHighLow, type: 'scatter', mode: 'lines+markers', name: `${peak} Variance Ratios ` },
         { x: detectors, y: varGroundtruthHighLow, type: 'scatter', mode: 'lines', name: 'Ground Truth' }
     ], {
-        title: `${peak} Variance Ratios (High-Low Gain in old data)`,
+        title: `${peak} Variance Ratios (No ND High-Low Gain in old data)`,
         xaxis: { title: 'Detectors', tickangle: 45 },
         yaxis: { title: 'Ratio' }
     });
