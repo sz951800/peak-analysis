@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peak Ratio Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
+</head>
+<body>
+    <div>
+        <label for="peak-select">Select Peak:</label>
+        <select id="peak-select"></select>
+    </div>
+    <div id="plot"></div>
+
+    <script>
+        // Path to the JSON data
+        const dataPath = 'Export High NoVio/plotly_dashboard_data.json';
+
+        // Load the data
+        fetch(dataPath)
+            .then(response => response.json())
+            .then(data => {
+                const peakSelect = document.getElementById('peak-select');
+                const plotDiv = document.getElementById('plot');
+
+                // Populate the dropdown
+                data.forEach((item, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = item.peak;
+                    peakSelect.appendChild(option);
+                });
+
+                // Function to plot the selected peak
+                const plotPeak = (peakIndex) => {
+                    const peakData = data[peakIndex];
+                    const trace1 = {
+                        x: peakData.detectors,
+                        y: peakData.ratios,
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        name: 'Detector Ratios'
+                    };
+
+                    const trace2 = {
+                        x: peakData.detectors,
+                        y: Array(peakData.detectors.length).fill(peakData.ground_truth),
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: 'Ground Truth'
+                    };
+
+                    const layout = {
+                        title: `Ratio Visualization for ${peakData.peak}`,
+                        xaxis: { title: 'Detectors' },
+                        yaxis: { title: 'Ratio' }
+                    };
+
+                    Plotly.newPlot(plotDiv, [trace1, trace2], layout);
+                };
+
+                // Initial plot
+                plotPeak(0);
+
+                // Update plot on selection change
+                peakSelect.addEventListener('change', (e) => {
+                    plotPeak(e.target.value);
+                });
+            })
+            .catch(error => console.error('Error loading data:', error));
+    </script>
+</body>
+</html>
